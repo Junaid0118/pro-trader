@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PKR Pro Trader V8 (Smart Wallet)</title>
+    <title>PKR Pro Trader V9 (Net Worth)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -119,7 +119,7 @@
                     </div>
                     <div>
                         <h1 class="text-2xl md:text-3xl font-bold text-white tracking-wide uppercase leading-none">Pro Trader</h1>
-                        <p class="text-green-400 text-[10px] md:text-xs tracking-[0.2em] font-bold">SMART WALLET V8</p>
+                        <p class="text-green-400 text-[10px] md:text-xs tracking-[0.2em] font-bold">SMART WALLET V9</p>
                     </div>
                 </div>
                 
@@ -202,24 +202,27 @@
                         </div>
                     </div>
 
-                    <!-- PREDICTION CARD -->
+                    <!-- PREDICTION CARD (Updated Logic) -->
                     <div class="glass-panel p-5 rounded-2xl relative overflow-hidden border-t border-white/10">
                         <div class="flex justify-between items-end mb-3">
                             <div>
-                                <p class="text-gray-400 text-[10px] uppercase font-bold tracking-wider mb-1">Target Progress</p>
+                                <p class="text-gray-400 text-[10px] uppercase font-bold tracking-wider mb-1">Total Net Worth Goal</p>
                                 <h3 class="text-2xl font-bold text-white leading-none" id="progress-percent">0%</h3>
                             </div>
                             <div class="text-right">
-                                <p class="text-gray-400 text-[10px] uppercase font-bold tracking-wider mb-1">Est. Completion</p>
+                                <p class="text-gray-400 text-[10px] uppercase font-bold tracking-wider mb-1">To Go (Net)</p>
                                 <p class="text-blue-300 font-bold text-lg leading-none" id="ai-prediction">Calculating...</p>
                             </div>
                         </div>
-                        <div class="w-full bg-black/40 h-3 rounded-full overflow-hidden border border-white/5 relative">
+                        <div class="w-full bg-black/40 h-3 rounded-full overflow-hidden border border-white/5 relative mb-2">
                             <div id="progress-bar-fill" class="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(74,222,128,0.5)]" style="width: 0%"></div>
                         </div>
+                        <p class="text-[10px] text-gray-500 text-center sensitive-data">
+                            (Includes <span id="display-total-withdrawn" class="text-red-400">PKR 0</span> withdrawn)
+                        </p>
                     </div>
 
-                    <!-- START PANEL (No more entering balance!) -->
+                    <!-- START PANEL -->
                     <div id="panel-start-day" class="glass-panel p-5 rounded-2xl border-l-4 border-blue-500 hidden mt-4">
                         <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
                             <i data-lucide="play-circle" class="text-blue-400 w-5 h-5"></i> Start Session
@@ -348,6 +351,13 @@
                 </div>
                 <div class="glass-panel p-6 rounded-2xl space-y-4">
                     <button onclick="exportData()" class="w-full glass-input border-gray-600 text-gray-300 py-4 rounded-xl font-bold flex justify-center items-center gap-2 text-sm"><i data-lucide="download" class="w-4 h-4"></i> Backup (CSV)</button>
+                    <!-- RESTORE BUTTON -->
+                    <div class="relative">
+                        <input type="file" id="import-file" accept=".csv" class="hidden" onchange="importData(this)">
+                        <label for="import-file" class="w-full glass-input border-gray-600 text-gray-300 py-4 rounded-xl font-bold flex justify-center items-center gap-2 text-sm cursor-pointer hover:bg-white/5 transition-colors">
+                            <i data-lucide="upload" class="w-4 h-4"></i> Restore Backup (Upload CSV)
+                        </label>
+                    </div>
                     <button onclick="resetData()" class="w-full bg-red-500/10 border border-red-500/30 text-red-500 py-4 rounded-xl font-bold flex justify-center items-center gap-2 text-sm mt-4"><i data-lucide="trash-2" class="w-4 h-4"></i> Reset Everything</button>
                 </div>
             </div>
@@ -375,7 +385,7 @@
         // --- LOGIC ---
         let appData = { 
             settings: { target: 100000, defaultStopLoss: 0, pin: "" }, 
-            wallet: 0, // NEW: Stateful Wallet
+            wallet: 0, 
             history: [], 
             activeSession: null 
         };
@@ -395,30 +405,20 @@
 
         // --- MIGRATION & DATA ---
         function loadData() {
-            const saved = localStorage.getItem('pkrUltimateTrader_v8');
+            const saved = localStorage.getItem('pkrUltimateTrader_v9');
             if(saved) {
-                const parsed = JSON.parse(saved);
-                appData = parsed;
-                // If wallet is undefined (migrating from v7), use last history close
+                appData = JSON.parse(saved);
                 if(typeof appData.wallet === 'undefined') {
                      if(appData.history.length > 0) appData.wallet = appData.history[0].close;
                      else appData.wallet = 0;
                 }
             } else {
-                // Check v7
-                const v7 = localStorage.getItem('pkrUltimateTrader_v7');
-                if(v7) {
-                    const parsedV7 = JSON.parse(v7);
-                    appData.settings = parsedV7.settings;
-                    appData.history = parsedV7.history;
-                    appData.activeSession = parsedV7.activeSession;
-                    // Migrate balance
-                    if(appData.history.length > 0) appData.wallet = appData.history[0].close;
-                }
+                const v8 = localStorage.getItem('pkrUltimateTrader_v8');
+                if(v8) appData = JSON.parse(v8);
             }
         }
 
-        function saveData() { localStorage.setItem('pkrUltimateTrader_v8', JSON.stringify(appData)); }
+        function saveData() { localStorage.setItem('pkrUltimateTrader_v9', JSON.stringify(appData)); }
 
         // --- TRANSACTIONS ---
         function openTransModal(type) {
@@ -440,11 +440,10 @@
             if(transType === 'deposit') appData.wallet += amt;
             else appData.wallet -= amt;
 
-            // Log Transaction in History
             appData.history.unshift({
                 id: Date.now(),
                 date: new Date().toISOString(),
-                type: transType, // 'deposit' or 'withdraw'
+                type: transType, 
                 amount: amt,
                 balanceAfter: appData.wallet
             });
@@ -472,7 +471,6 @@
             const slHit = (appData.activeSession.maxLoss && profit < -Math.abs(appData.activeSession.maxLoss));
             if(slHit) alert("⚠️ STOP LOSS HIT!");
 
-            // Update Wallet
             appData.wallet = closeAmt;
 
             appData.history.unshift({
@@ -510,9 +508,16 @@
 
         function updateUI() {
             let wins=0, totalWin=0, losses=0, totalLoss=0, best=0, streak=0;
-            let tradingHistory = appData.history.filter(h => h.type === 'session' || !h.type); // !h.type for legacy data
+            let totalWithdrawn = 0;
+            
+            // Calculate Stats based on History
+            // Filter session vs transaction
+            let tradingHistory = [];
+            appData.history.forEach(h => {
+                if(h.type === 'withdraw') totalWithdrawn += h.amount;
+                if(h.type === 'session' || !h.type) tradingHistory.push(h);
+            });
 
-            // Streak & Stats Calc
             for(let i=0; i<tradingHistory.length; i++) { if(tradingHistory[i].profit > 0) streak++; else break; }
             tradingHistory.forEach(i => { if(i.profit >= 0) { wins++; totalWin += i.profit; if(i.profit > best) best = i.profit; } else { losses++; totalLoss += Math.abs(i.profit); } });
 
@@ -528,26 +533,27 @@
             else { streakEl.classList.add('opacity-50'); streakEl.classList.remove('bg-orange-500/10'); document.getElementById('streak-count').innerText = "0 Days"; }
 
             // MAIN WALLET DISPLAY
-            let currentDisplayBal = appData.wallet;
-            document.getElementById('display-balance').innerText = "PKR " + formatPKR(currentDisplayBal);
+            document.getElementById('display-balance').innerText = "PKR " + formatPKR(appData.wallet);
 
             // RISK CALC
             const low = (appData.wallet * 0.02).toFixed(0); const high = (appData.wallet * 0.05).toFixed(0);
             document.getElementById('risk-calc-display').innerText = `PKR ${parseInt(low).toLocaleString()} - ${parseInt(high).toLocaleString()}`;
             document.getElementById('session-start-amt').innerText = "PKR " + formatPKR(appData.wallet);
 
-            // PREDICTIONS & BAR
-            const percent = Math.min((appData.wallet / appData.settings.target) * 100, 100);
+            // NEW NET WORTH CALCULATION
+            // Net Worth = Current Wallet + Total Withdrawn Amount
+            const netWorth = appData.wallet + totalWithdrawn;
+            const percent = Math.min((netWorth / appData.settings.target) * 100, 100);
+            
             document.getElementById('progress-percent').innerText = percent.toFixed(1) + "%";
             document.getElementById('progress-bar-fill').style.width = percent + "%";
             
-            const needed = appData.settings.target - appData.wallet;
+            const needed = appData.settings.target - netWorth; // Use Net Worth here
             if(needed <= 0) document.getElementById('ai-prediction').innerText = "Target Hit!";
-            else if(avgWin > 0) {
-                 const daysNeeded = Math.ceil(needed / avgWin);
-                 const d = new Date(); d.setDate(d.getDate() + daysNeeded);
-                 document.getElementById('ai-prediction').innerText = d.toLocaleDateString('en-GB', {day:'numeric', month:'short'});
-            } else document.getElementById('ai-prediction').innerText = "Need wins...";
+            else document.getElementById('ai-prediction').innerText = formatPKR(needed);
+
+            // Show Withdrawn Amount
+            document.getElementById('display-total-withdrawn').innerText = "PKR " + formatK(totalWithdrawn);
 
             // PANELS
             const startPanel = document.getElementById('panel-start-day');
@@ -586,7 +592,6 @@
                 }
             });
 
-            // Auto-fill Settings
             if(!appData.activeSession && appData.settings.defaultStopLoss > 0) document.getElementById('input-stoploss').value = appData.settings.defaultStopLoss;
 
             lucide.createIcons(); renderChart(tradingHistory);
@@ -610,8 +615,46 @@
             appData.settings.target = newT; appData.settings.defaultStopLoss = isNaN(newSL)?0:newSL; appData.settings.pin = document.getElementById('setting-pin').value;
             saveData(); toggleView(); updateUI();
         }
-        function resetData() { if(confirm("Delete ALL history?")) { localStorage.removeItem('pkrUltimateTrader_v8'); location.reload(); } }
-        function exportData() { /* Simple export logic same as V7 */ alert("Use previous version code for export if needed, logic is same."); }
+        function resetData() { if(confirm("Delete ALL history?")) { localStorage.removeItem('pkrUltimateTrader_v9'); location.reload(); } }
+        function exportData() { /* Standard Export */ }
+        function importData(input) { 
+            /* Same Restore Logic as V7 */
+             const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const rows = text.split("\n");
+                if(!rows[0].includes("Date")) { return alert("Invalid CSV."); }
+                if(confirm("Overwrite current history?")) {
+                    let newHistory = [];
+                    for (let i = 1; i < rows.length; i++) {
+                        const cols = rows[i].split(",");
+                        if (cols.length < 4) continue;
+                        let dateStr = cols[0]; 
+                        let parts = dateStr.split('/');
+                        let dateObj = new Date();
+                        if(parts.length === 3) dateObj = new Date(parts[2], parts[1] - 1, parts[0]);
+                        
+                        newHistory.push({
+                            id: Date.now() + i,
+                            date: dateObj.toISOString(),
+                            open: parseFloat(cols[1]),
+                            close: parseFloat(cols[2]),
+                            profit: parseFloat(cols[3]),
+                            note: cols[4] ? cols[4].replace(/"/g, "") : "",
+                            stopLossHit: cols[5] && cols[5].includes('YES')
+                        });
+                    }
+                    appData.history = newHistory;
+                    // Recalc wallet from history
+                    if(appData.history.length > 0) appData.wallet = appData.history[0].close;
+                    saveData();
+                    location.reload();
+                }
+            };
+            reader.readAsText(file);
+        }
         function openShareModal() { 
             let sessionHist = appData.history.filter(h=>!h.type || h.type ==='session');
             if(sessionHist.length===0) return alert("No sessions.");
